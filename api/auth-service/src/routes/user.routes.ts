@@ -1,12 +1,16 @@
-import { Router } from 'express';
+import { Router } from "express";
 import {
   getUserProfile,
   updateUser,
   deleteUser,
-  approveVerifier,
+  getVerifiersList,
+  updateVerifierStatus,
   getAllUsers,
-} from '../controllers/user.controller';
-import { authenticateJWT, authorizeRoles } from '../middlewares/auth.middleware';
+} from "../controllers/user.controller";
+import {
+  authenticateJWT,
+  authorizeRoles,
+} from "../middlewares/auth.middleware";
 
 const router = Router();
 
@@ -68,7 +72,7 @@ router.use(authenticateJWT);
  *       500:
  *         description: Internal server error
  */
-router.get('/me', getUserProfile);
+router.get("/me", getUserProfile);
 
 /**
  * @openapi
@@ -124,7 +128,7 @@ router.get('/me', getUserProfile);
  *       500:
  *         description: Internal server error
  */
-router.put('/me', updateUser);
+router.put("/me", updateUser);
 
 /**
  * @openapi
@@ -156,7 +160,7 @@ router.put('/me', updateUser);
  *       500:
  *         description: Internal server error
  */
-router.delete('/me', deleteUser);
+router.delete("/me", deleteUser);
 
 /**
  * @openapi
@@ -213,71 +217,60 @@ router.delete('/me', deleteUser);
  *       500:
  *         description: Internal server error
  */
-router.get('/', authorizeRoles('ADVOCATE'), getAllUsers);
+router.get("/", authorizeRoles("ADVOCATE"), getAllUsers);
 
 /**
  * @openapi
- * /api/users/verify/{verifierId}:
+ * /api/users/advocate/verifiers:
+ *   get:
+ *     summary: List all Verifiers
+ *     description: Retrieve a list of all verifiers and their current approval status.
+ *     tags:
+ *       - Users
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List retrieved successfully
+ */
+router.get("/advocate/verifiers", authorizeRoles("ADVOCATE"), getVerifiersList);
+
+/**
+ * @openapi
+ * /api/users/advocate/verifiers/{id}/status:
  *   patch:
- *     summary: Approve a Verifier (Advocate only)
- *     description: |
- *       Allow the Advocate to approve a Verifier account for login.
- *       Only the ADVOCATE role can call this endpoint.
- *       Once approved (is_approved_by_advocate = true), the Verifier can login.
+ *     summary: Update Verifier Status
+ *     description: Allows Advocate to approve or reject a pending Verifier.
  *     tags:
  *       - Users
  *     security:
  *       - BearerAuth: []
  *     parameters:
- *       - name: verifierId
+ *       - name: id
  *         in: path
  *         required: true
  *         schema:
  *           type: string
- *           format: uuid
- *         description: The UUID of the Verifier to approve
- *         example: 550e8400-e29b-41d4-a716-446655440000
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [APPROVED, REJECTED]
  *     responses:
  *       200:
- *         description: Verifier approved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: Verifier approved successfully
- *                 data:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: string
- *                     email:
- *                       type: string
- *                     role:
- *                       type: string
- *                     is_approved_by_advocate:
- *                       type: boolean
- *                       example: true
- *                     first_name:
- *                       type: string
- *                     last_name:
- *                       type: string
- *       400:
- *         description: Invalid request or user is not a Verifier
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden - Only Advocate can approve Verifiers
- *       404:
- *         description: Verifier not found
- *       500:
- *         description: Internal server error
+ *         description: Status updated successfully
  */
-router.patch('/verify/:verifierId', authorizeRoles('ADVOCATE'), approveVerifier);
+router.patch(
+  "/advocate/verifiers/:id/status",
+  authorizeRoles("ADVOCATE"),
+  updateVerifierStatus,
+);
 
 export default router;

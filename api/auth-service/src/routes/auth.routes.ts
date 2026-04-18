@@ -1,5 +1,12 @@
-import { Router } from 'express';
-import { signUp, login, refreshToken, logout } from '../controllers/auth.controller';
+import { Router } from "express";
+import {
+  signUp,
+  login,
+  refreshToken,
+  logout,
+  registerVerifier,
+  registerWorker,
+} from "../controllers/auth.controller";
 
 const router = Router();
 
@@ -9,7 +16,7 @@ const router = Router();
  *   post:
  *     summary: Register a new user
  *     description: |
- *       Create a new user account. 
+ *       Create a new user account.
  *       - WORKER and VERIFIER roles are allowed to signup
  *       - VERIFIER signup requires approval from Advocate before login
  *       - Only the hardcoded ADVOCATE can register with ADVOCATE role
@@ -96,7 +103,7 @@ const router = Router();
  *       500:
  *         description: Internal server error
  */
-router.post('/signup', signUp);
+router.post("/signup", signUp);
 
 /**
  * @openapi
@@ -168,7 +175,7 @@ router.post('/signup', signUp);
  *       500:
  *         description: Internal server error
  */
-router.post('/login', login);
+router.post("/login", login);
 
 /**
  * @openapi
@@ -214,7 +221,7 @@ router.post('/login', login);
  *       500:
  *         description: Internal server error
  */
-router.post('/refresh', refreshToken);
+router.post("/refresh", refreshToken);
 
 /**
  * @openapi
@@ -239,6 +246,73 @@ router.post('/refresh', refreshToken);
  *                   type: string
  *                   example: Logout successful
  */
-router.post('/logout', logout);
+router.post("/logout", logout);
+
+/**
+ * @openapi
+ * /api/auth/register/worker:
+ *   post:
+ *     summary: Register a new Worker
+ *     description: Creates a User and their associated WorkerProfile. Workers are auto-approved.
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *               - category
+ *               - cityZone
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *                 minLength: 6
+ *               category:
+ *                 type: string
+ *                 enum: [RIDE_HAILING, FOOD_DELIVERY, FREELANCE_DESIGNER, DOMESTIC_WORKER]
+ *               cityZone:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Worker registered successfully
+ */
+router.post("/register/worker", registerWorker);
+
+/**
+ * @openapi
+ * /api/auth/register/verifier:
+ *   post:
+ *     summary: Register a new Verifier
+ *     description: Creates a Verifier account with PENDING status. Does not return a JWT as login is restricted until approved.
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *                 minLength: 6
+ *     responses:
+ *       201:
+ *         description: Verifier registered and pending approval
+ */
+router.post("/register/verifier", registerVerifier);
 
 export default router;

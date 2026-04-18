@@ -17,9 +17,9 @@ importers:
 
   api/auth-service:
     dependencies:
-      '@prisma/client':
-        specifier: ^7.7.0
-        version: 7.7.0(prisma@7.7.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@6.0.3))(typescript@6.0.3)
+      '@repo/prisma':
+        specifier: workspace:*
+        version: link:../../pris_client
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
@@ -48,9 +48,6 @@ importers:
         specifier: ^5.0.1
         version: 5.0.1(express@5.2.1)
     devDependencies:
-      '@prisma/config':
-        specifier: ^7.7.0
-        version: 7.7.0
       '@types/bcryptjs':
         specifier: ^3.0.0
         version: 3.0.0
@@ -78,9 +75,6 @@ importers:
       '@types/swagger-ui-express':
         specifier: ^4.1.8
         version: 4.1.8
-      prisma:
-        specifier: ^7.7.0
-        version: 7.7.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@6.0.3)
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
@@ -142,28 +136,6 @@ importers:
       prisma:
         specifier: ^7.7.0
         version: 7.7.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@6.0.3)
-      tsx:
-        specifier: ^4.21.0
-        version: 4.21.0
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  api/r:
-    dependencies:
-      '@repo/prisma':
-        specifier: workspace:*
-        version: link:../../pris_client
-      dotenv:
-        specifier: ^17.4.2
-        version: 17.4.2
-      express:
-        specifier: ^5.2.1
-        version: 5.2.1
-    devDependencies:
-      '@types/express':
-        specifier: ^5.0.6
-        version: 5.0.6
       tsx:
         specifier: ^4.21.0
         version: 4.21.0

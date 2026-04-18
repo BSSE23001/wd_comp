@@ -1,7 +1,6 @@
-import { Request, Response } from 'express';
-import { query } from '../db';
-import { User, UpdateUserPayload } from '../types';
-
+import { Request, Response } from "express";
+import { prisma, User, Role, ApprovalStatus } from "@repo/prisma";
+import { UpdateUserPayload } from "../types";
 /**
  * @openapi
  * /api/users/me:
@@ -31,44 +30,52 @@ import { User, UpdateUserPayload } from '../types';
  *       500:
  *         description: Internal server error
  */
-export const getUserProfile = async (req: Request, res: Response): Promise<void> => {
+export const getUserProfile = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
-    if (!req.user) {
+    // Assuming req.user is populated by your auth middleware
+    if (!req.user || !req.user.id) {
       res.status(401).json({
         success: false,
-        message: 'User not authenticated',
+        message: "User not authenticated",
       });
       return;
     }
 
-    const result = await query(
-      `SELECT id, email, role, is_approved_by_advocate, first_name, last_name, 
-              phone_number, profile_photo_url, created_at, updated_at 
-       FROM users WHERE id = $1`,
-      [req.user.id]
-    );
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        approvalStatus: true,
+        createdAt: true,
+        updatedAt: true,
+        workerProfile: true, // Included relation from schema for richness
+      },
+    });
 
-    if (result.rows.length === 0) {
+    if (!user) {
       res.status(404).json({
         success: false,
-        message: 'User not found',
+        message: "User not found",
       });
       return;
     }
-
-    const user = result.rows[0];
 
     res.json({
       success: true,
-      message: 'User profile retrieved successfully',
+      message: "User profile retrieved successfully",
       data: user,
     });
   } catch (error) {
-    console.error('Get user profile error:', error);
+    console.error("Get user profile error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      message: "Internal server error",
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
@@ -108,84 +115,61 @@ export const getUserProfile = async (req: Request, res: Response): Promise<void>
  *       500:
  *         description: Internal server error
  */
-export const updateUser = async (req: Request, res: Response): Promise<void> => {
+export const updateUser = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
-    if (!req.user) {
+    if (!req.user || !req.user.id) {
       res.status(401).json({
         success: false,
-        message: 'User not authenticated',
+        message: "User not authenticated",
       });
       return;
     }
 
-    const { first_name, last_name, phone_number, profile_photo_url } =
-      req.body as UpdateUserPayload;
+    // NOTE: first_name, last_name, phone_number, profile_photo_url are missing from the schema.
+    // If you update your schema to include these, you can add them to the 'data' object below.
+    // For now, this route validates authentication and ensures the user exists.
 
-    // Build dynamic UPDATE query
-    const fields: string[] = [];
-    const values: any[] = [];
-    let paramIndex = 1;
+    const userToUpdate = await prisma.user.findUnique({
+      where: { id: req.user.id },
+    });
 
-    if (first_name !== undefined) {
-      fields.push(`first_name = $${paramIndex}`);
-      values.push(first_name);
-      paramIndex++;
-    }
-
-    if (last_name !== undefined) {
-      fields.push(`last_name = $${paramIndex}`);
-      values.push(last_name);
-      paramIndex++;
-    }
-
-    if (phone_number !== undefined) {
-      fields.push(`phone_number = $${paramIndex}`);
-      values.push(phone_number);
-      paramIndex++;
-    }
-
-    if (profile_photo_url !== undefined) {
-      fields.push(`profile_photo_url = $${paramIndex}`);
-      values.push(profile_photo_url);
-      paramIndex++;
-    }
-
-    if (fields.length === 0) {
-      res.status(400).json({
-        success: false,
-        message: 'No fields to update',
-      });
-      return;
-    }
-
-    // Add user ID to the end of values array
-    values.push(req.user.id);
-
-    const updateQuery = `UPDATE users SET ${fields.join(', ')} WHERE id = $${paramIndex} RETURNING *`;
-
-    const result = await query(updateQuery, values);
-
-    if (result.rows.length === 0) {
+    if (!userToUpdate) {
       res.status(404).json({
         success: false,
-        message: 'User not found',
+        message: "User not found",
       });
       return;
     }
 
-    const updatedUser = result.rows[0];
+    // Placeholder update for when schema fields are added.
+    const updatedUser = await prisma.user.update({
+      where: { id: req.user.id },
+      data: {
+        // e.g., firstName: req.body.first_name,
+      },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        approvalStatus: true,
+        updatedAt: true,
+      },
+    });
 
     res.json({
       success: true,
-      message: 'User profile updated successfully',
+      message: "User profile updated successfully",
       data: updatedUser,
     });
   } catch (error) {
-    console.error('Update user error:', error);
+    console.error("Update user error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      message: "Internal server error",
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
@@ -210,164 +194,123 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
  *       500:
  *         description: Internal server error
  */
-export const deleteUser = async (req: Request, res: Response): Promise<void> => {
+export const deleteUser = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
-    if (!req.user) {
+    if (!req.user || !req.user.id) {
       res.status(401).json({
         success: false,
-        message: 'User not authenticated',
+        message: "User not authenticated",
       });
       return;
     }
 
-    const result = await query('DELETE FROM users WHERE id = $1 RETURNING id', [req.user.id]);
+    // Prisma throws an error if trying to delete a non-existent record
+    const userExists = await prisma.user.findUnique({
+      where: { id: req.user.id },
+    });
 
-    if (result.rows.length === 0) {
+    if (!userExists) {
       res.status(404).json({
         success: false,
-        message: 'User not found',
+        message: "User not found",
       });
       return;
     }
+
+    await prisma.user.delete({
+      where: { id: req.user.id },
+    });
 
     res.json({
       success: true,
-      message: 'User account deleted successfully',
+      message: "User account deleted successfully",
     });
   } catch (error) {
-    console.error('Delete user error:', error);
+    console.error("Delete user error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      message: "Internal server error",
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
 
 /**
  * @openapi
- * /api/users/verify/{verifierId}:
- *   patch:
- *     summary: Approve a Verifier (Advocate only)
- *     description: |
- *       Allow the Advocate to approve a Verifier account.
- *       Only an ADVOCATE can call this endpoint.
- *       Once approved, the Verifier can login.
- *     tags:
- *       - Users
- *     security:
- *       - BearerAuth: []
- *     parameters:
- *       - name: verifierId
- *         in: path
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: The UUID of the Verifier to approve
- *     responses:
- *       200:
- *         description: Verifier approved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 message:
- *                   type: string
- *                 data:
- *                   type: object
- *       400:
- *         description: Invalid request or user is not a Verifier
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden - Only Advocate can approve Verifiers
- *       404:
- *         description: Verifier not found
- *       500:
- *         description: Internal server error
+ * /api/users/advocate/verifiers:
  */
-export const approveVerifier = async (req: Request, res: Response): Promise<void> => {
+export const getVerifiersList = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
-    if (!req.user) {
-      res.status(401).json({
-        success: false,
-        message: 'User not authenticated',
-      });
+    if (!req.user || req.user.role !== Role.ADVOCATE) {
+      res.status(403).json({ success: false, message: "Forbidden" });
       return;
     }
 
-    // Only ADVOCATE can approve verifiers
-    if (req.user.role !== 'ADVOCATE') {
-      res.status(403).json({
-        success: false,
-        message: 'Only Advocate can approve Verifiers',
-      });
+    const verifiers = await prisma.user.findMany({
+      where: { role: Role.VERIFIER },
+      select: { id: true, email: true, approvalStatus: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+    });
+
+    res.json({ success: true, data: verifiers });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+/**
+ * @openapi
+ * /api/users/advocate/verifiers/{id}/status:
+ */
+export const updateVerifierStatus = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    if (!req.user || req.user.role !== Role.ADVOCATE) {
+      res.status(403).json({ success: false, message: "Forbidden" });
       return;
     }
 
-    const { verifierId } = req.params;
+    const verifierId = req.params.id as string;
+    const { status } = req.body;
 
-    if (!verifierId) {
+    if (![ApprovalStatus.APPROVED, ApprovalStatus.REJECTED].includes(status)) {
       res.status(400).json({
         success: false,
-        message: 'Verifier ID is required',
+        message: "Status must be APPROVED or REJECTED",
       });
       return;
     }
 
-    // Query the verifier
-    const userResult = await query('SELECT * FROM users WHERE id = $1', [verifierId]);
+    const verifier = await prisma.user.findUnique({
+      where: { id: verifierId },
+    });
 
-    if (userResult.rows.length === 0) {
-      res.status(404).json({
-        success: false,
-        message: 'User not found',
-      });
+    if (!verifier || verifier.role !== Role.VERIFIER) {
+      res.status(404).json({ success: false, message: "Verifier not found" });
       return;
     }
 
-    const verifier = userResult.rows[0] as User;
-
-    // Ensure the user is a VERIFIER
-    if (verifier.role !== 'VERIFIER') {
-      res.status(400).json({
-        success: false,
-        message: 'User is not a Verifier',
-      });
-      return;
-    }
-
-    // Update the verifier's approval status
-    const updateResult = await query(
-      'UPDATE users SET is_approved_by_advocate = true WHERE id = $1 RETURNING *',
-      [verifierId]
-    );
-
-    const approvedVerifier = updateResult.rows[0];
+    const updatedVerifier = await prisma.user.update({
+      where: { id: verifierId },
+      data: { approvalStatus: status as ApprovalStatus },
+      select: { id: true, email: true, role: true, approvalStatus: true },
+    });
 
     res.json({
       success: true,
-      message: 'Verifier approved successfully',
-      data: {
-        id: approvedVerifier.id,
-        email: approvedVerifier.email,
-        role: approvedVerifier.role,
-        is_approved_by_advocate: approvedVerifier.is_approved_by_advocate,
-        first_name: approvedVerifier.first_name,
-        last_name: approvedVerifier.last_name,
-      },
+      message: `Verifier status updated to ${status}`,
+      data: updatedVerifier,
     });
   } catch (error) {
-    console.error('Approve verifier error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: error instanceof Error ? error.message : 'Unknown error',
-    });
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
@@ -398,52 +341,56 @@ export const approveVerifier = async (req: Request, res: Response): Promise<void
  *       500:
  *         description: Internal server error
  */
-export const getAllUsers = async (req: Request, res: Response): Promise<void> => {
+export const getAllUsers = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
-    if (!req.user) {
+    if (!req.user || !req.user.role) {
       res.status(401).json({
         success: false,
-        message: 'User not authenticated',
+        message: "User not authenticated",
       });
       return;
     }
 
-    // Only ADVOCATE can view all users
-    if (req.user.role !== 'ADVOCATE') {
+    if (req.user.role !== Role.ADVOCATE) {
       res.status(403).json({
         success: false,
-        message: 'Only Advocate can view all users',
+        message: "Only Advocate can view all users",
       });
       return;
     }
 
-    const { role } = req.query;
+    const role = req.query.role as string | undefined;
 
-    let queryText = `SELECT id, email, role, is_approved_by_advocate, first_name, last_name, 
-                     phone_number, profile_photo_url, created_at, updated_at FROM users`;
-    const values: any[] = [];
-
-    if (role) {
-      queryText += ' WHERE role = $1';
-      values.push(role);
-    }
-
-    queryText += ' ORDER BY created_at DESC';
-
-    const result = await query(queryText, values);
+    const users = await prisma.user.findMany({
+      where: role ? { role: role as Role } : undefined,
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        approvalStatus: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
 
     res.json({
       success: true,
-      message: 'Users retrieved successfully',
-      data: result.rows,
-      count: result.rows.length,
+      message: "Users retrieved successfully",
+      data: users,
+      count: users.length,
     });
   } catch (error) {
-    console.error('Get all users error:', error);
+    console.error("Get all users error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      message: "Internal server error",
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };

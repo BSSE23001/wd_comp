@@ -1,12 +1,23 @@
-import { Request, Response } from 'express';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { query } from '../db';
-import { User, SignUpPayload, LoginPayload, AuthResponse, JWTPayload } from '../types';
+import { Request, Response } from "express";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import {
+  prisma,
+  User,
+  Role,
+  ApprovalStatus,
+  WorkerCategory,
+} from "@repo/prisma";
+import {
+  SignUpPayload,
+  LoginPayload,
+  AuthResponse,
+  JWTPayload,
+} from "../types";
 
 const SALT_ROUNDS = 10;
-const ACCESS_TOKEN_EXPIRY = '15m';
-const REFRESH_TOKEN_EXPIRY = '7d';
+const ACCESS_TOKEN_EXPIRY = "15m";
+const REFRESH_TOKEN_EXPIRY = "7d";
 
 /**
  * Generate Access Token
@@ -17,7 +28,7 @@ const generateAccessToken = (user: User): string => {
     email: user.email,
     role: user.role,
   };
-  return jwt.sign(payload, process.env.JWT_SECRET || 'secret', {
+  return jwt.sign(payload, process.env.JWT_SECRET || "secret", {
     expiresIn: ACCESS_TOKEN_EXPIRY,
   });
 };
@@ -31,7 +42,7 @@ const generateRefreshToken = (user: User): string => {
     email: user.email,
     role: user.role,
   };
-  return jwt.sign(payload, process.env.JWT_REFRESH_SECRET || 'refresh_secret', {
+  return jwt.sign(payload, process.env.JWT_REFRESH_SECRET || "refresh_secret", {
     expiresIn: REFRESH_TOKEN_EXPIRY,
   });
 };
@@ -42,7 +53,7 @@ const generateRefreshToken = (user: User): string => {
  *   post:
  *     summary: Register a new user
  *     description: |
- *       Create a new user account. 
+ *       Create a new user account.
  *       - WORKER and VERIFIER roles are auto-approved for signup
  *       - Only the hardcoded ADVOCATE can use role='ADVOCATE'
  *     tags:
@@ -100,75 +111,79 @@ const generateRefreshToken = (user: User): string => {
  */
 export const signUp = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { email, password, role, first_name, last_name } = req.body as SignUpPayload;
+    const { email, password, role } = req.body as SignUpPayload;
 
     // Validate required fields
     if (!email || !password || !role) {
       res.status(400).json({
         success: false,
-        message: 'Email, password, and role are required',
+        message: "Email, password, and role are required",
       });
       return;
     }
 
-    // Validate role
-    const validRoles = ['WORKER', 'VERIFIER', 'ADVOCATE'];
-    if (!validRoles.includes(role)) {
+    // Validate role using Prisma Enums
+    if (!Object.values(Role).includes(role as Role)) {
       res.status(400).json({
         success: false,
-        message: 'Invalid role. Must be WORKER, VERIFIER, or ADVOCATE',
+        message: "Invalid role. Must be WORKER, VERIFIER, or ADVOCATE",
       });
       return;
     }
 
     // Check if user already exists
-    const existingUser = await query('SELECT * FROM users WHERE email = $1', [email]);
-    if (existingUser.rows.length > 0) {
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
       res.status(400).json({
         success: false,
-        message: 'Email already registered',
+        message: "Email already registered",
       });
       return;
     }
 
     // Hash password
-    const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
+    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
-    // Only the hardcoded advocate email can register as ADVOCATE
-    let isApprovedByAdvocate = false;
-    if (role === 'ADVOCATE') {
+    // Map role and approval logic
+    let approvalStatus: ApprovalStatus = ApprovalStatus.PENDING;
+
+    if (role === Role.ADVOCATE) {
       if (email !== process.env.ADVOCATE_EMAIL) {
         res.status(403).json({
           success: false,
-          message: 'Only the designated Advocate can register with ADVOCATE role',
+          message:
+            "Only the designated Advocate can register with ADVOCATE role",
         });
         return;
       }
-      isApprovedByAdvocate = true; // Advocate is auto-approved
-    } else if (role === 'WORKER') {
-      isApprovedByAdvocate = true; // Workers don't need approval
+      approvalStatus = ApprovalStatus.APPROVED; // Advocate is auto-approved
+    } else if (role === Role.WORKER) {
+      approvalStatus = ApprovalStatus.APPROVED; // Workers don't need approval
     }
 
-    // Insert new user
-    const result = await query(
-      `INSERT INTO users 
-       (email, password_hash, role, is_approved_by_advocate, first_name, last_name) 
-       VALUES ($1, $2, $3, $4, $5, $6) 
-       RETURNING *`,
-      [email, password_hash, role, isApprovedByAdvocate, first_name || null, last_name || null]
-    );
-
-    const newUser = result.rows[0] as User;
+    // Insert new user using Prisma
+    const newUser = await prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        role: role as Role,
+        approvalStatus,
+        // first_name, last_name, etc. omitted as they are not in the provided Prisma schema
+      },
+    });
 
     // Generate tokens
     const accessToken = generateAccessToken(newUser);
     const refreshToken = generateRefreshToken(newUser);
 
     // Set refresh token as HttpOnly cookie
-    res.cookie('refreshToken', refreshToken, {
+    res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
@@ -178,22 +193,21 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
         id: newUser.id,
         email: newUser.email,
         role: newUser.role,
-        first_name: newUser.first_name,
-        last_name: newUser.last_name,
+        // Removed missing fields to align with Schema
       },
     };
 
     res.status(201).json({
       success: true,
-      message: 'User registered successfully',
+      message: "User registered successfully",
       data: response,
     });
   } catch (error) {
-    console.error('Sign up error:', error);
+    console.error("Sign up error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      message: "Internal server error",
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
@@ -253,43 +267,46 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password } = req.body as LoginPayload;
 
-    // Validate required fields
     if (!email || !password) {
       res.status(400).json({
         success: false,
-        message: 'Email and password are required',
+        message: "Email and password are required",
       });
       return;
     }
 
     // Query user by email
-    const userResult = await query('SELECT * FROM users WHERE email = $1', [email]);
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
 
-    if (userResult.rows.length === 0) {
+    if (!user) {
       res.status(401).json({
         success: false,
-        message: 'Invalid email or password',
+        message: "Invalid email or password",
       });
       return;
     }
 
-    const user = userResult.rows[0] as User;
-
     // Verify password
-    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
       res.status(401).json({
         success: false,
-        message: 'Invalid email or password',
+        message: "Invalid email or password",
       });
       return;
     }
 
-    // CRITICAL: Check if Verifier is approved by Advocate
-    if (user.role === 'VERIFIER' && !user.is_approved_by_advocate) {
+    // CRITICAL: Check if Verifier is approved
+    if (
+      user.role === Role.VERIFIER &&
+      user.approvalStatus !== ApprovalStatus.APPROVED
+    ) {
       res.status(401).json({
         success: false,
-        message: 'Your account has not been approved by the Advocate yet. Please wait for approval.',
+        message:
+          "Your account has not been approved by the Advocate yet. Please wait for approval.",
       });
       return;
     }
@@ -299,10 +316,10 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     const refreshToken = generateRefreshToken(user);
 
     // Set refresh token as HttpOnly cookie
-    res.cookie('refreshToken', refreshToken, {
+    res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
@@ -312,22 +329,20 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         id: user.id,
         email: user.email,
         role: user.role,
-        first_name: user.first_name,
-        last_name: user.last_name,
       },
     };
 
     res.json({
       success: true,
-      message: 'Login successful',
+      message: "Login successful",
       data: response,
     });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error("Login error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      message: "Internal server error",
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
@@ -362,14 +377,17 @@ export const login = async (req: Request, res: Response): Promise<void> => {
  *       500:
  *         description: Internal server error
  */
-export const refreshToken = async (req: Request, res: Response): Promise<void> => {
+export const refreshToken = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
     const refreshTokenCookie = req.cookies.refreshToken;
 
     if (!refreshTokenCookie) {
       res.status(401).json({
         success: false,
-        message: 'Refresh token not found in cookies',
+        message: "Refresh token not found in cookies",
       });
       return;
     }
@@ -379,44 +397,45 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
     try {
       decoded = jwt.verify(
         refreshTokenCookie,
-        process.env.JWT_REFRESH_SECRET || 'refresh_secret'
+        process.env.JWT_REFRESH_SECRET || "refresh_secret",
       ) as JWTPayload;
     } catch (error) {
       res.status(401).json({
         success: false,
-        message: 'Invalid or expired refresh token',
+        message: "Invalid or expired refresh token",
       });
       return;
     }
 
     // Query user to ensure they still exist
-    const userResult = await query('SELECT * FROM users WHERE id = $1', [decoded.id]);
-    if (userResult.rows.length === 0) {
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+    });
+
+    if (!user) {
       res.status(401).json({
         success: false,
-        message: 'User not found',
+        message: "User not found",
       });
       return;
     }
-
-    const user = userResult.rows[0] as User;
 
     // Generate new access token
     const newAccessToken = generateAccessToken(user);
 
     res.json({
       success: true,
-      message: 'Token refreshed successfully',
+      message: "Token refreshed successfully",
       data: {
         accessToken: newAccessToken,
       },
     });
   } catch (error) {
-    console.error('Refresh token error:', error);
+    console.error("Refresh token error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      message: "Internal server error",
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
@@ -434,9 +453,150 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
  *         description: Logout successful
  */
 export const logout = async (req: Request, res: Response): Promise<void> => {
-  res.clearCookie('refreshToken');
+  res.clearCookie("refreshToken");
   res.json({
     success: true,
-    message: 'Logout successful',
+    message: "Logout successful",
   });
+};
+
+/**
+ * @openapi
+ * /api/auth/register/worker:
+ */
+export const registerWorker = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { email, password, category, cityZone } = req.body;
+
+    if (!email || !password || !category || !cityZone) {
+      res.status(400).json({
+        success: false,
+        message: "Email, password, category, and cityZone are required",
+      });
+      return;
+    }
+
+    if (!Object.values(WorkerCategory).includes(category as WorkerCategory)) {
+      res.status(400).json({
+        success: false,
+        message: `Invalid category. Must be one of: ${Object.values(WorkerCategory).join(", ")}`,
+      });
+      return;
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      res
+        .status(400)
+        .json({ success: false, message: "Email already registered" });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+
+    // Use Prisma Transaction to ensure both User and Profile are created together
+    const newUser = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          email,
+          passwordHash,
+          role: Role.WORKER,
+          approvalStatus: ApprovalStatus.APPROVED, // Workers are auto-approved
+        },
+      });
+
+      await tx.workerProfile.create({
+        data: {
+          userId: user.id,
+          category: category as WorkerCategory,
+          cityZone,
+          defaultCurrency: "PKR",
+        },
+      });
+
+      return user;
+    });
+
+    const accessToken = generateAccessToken(newUser);
+    const refreshToken = generateRefreshToken(newUser);
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Worker registered successfully",
+      data: {
+        accessToken,
+        user: { id: newUser.id, email: newUser.email, role: newUser.role },
+      },
+    });
+  } catch (error) {
+    console.error("Worker registration error:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+/**
+ * @openapi
+ * /api/auth/register/verifier:
+ */
+export const registerVerifier = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      res
+        .status(400)
+        .json({ success: false, message: "Email and password are required" });
+      return;
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      res
+        .status(400)
+        .json({ success: false, message: "Email already registered" });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+
+    const newUser = await prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        role: Role.VERIFIER,
+        approvalStatus: ApprovalStatus.PENDING, // Verifiers wait for approval
+      },
+    });
+
+    // We DO NOT generate tokens here because they cannot log in yet
+    res.status(201).json({
+      success: true,
+      message:
+        "Verifier registered successfully. Please wait for an Advocate to approve your account before logging in.",
+      data: {
+        user: {
+          id: newUser.id,
+          email: newUser.email,
+          role: newUser.role,
+          status: newUser.approvalStatus,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Verifier registration error:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
 };
