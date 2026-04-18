@@ -1,20 +1,38 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+// src/proxy.ts
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-// 1. Comment out the route matcher
-// const isProtectedRoute = createRouteMatcher(["/posts(.*)", "/dashboard(.*)"]);
+const protectedRoutes = ['/worker', '/verifier', '/advocate'];
 
-export default clerkMiddleware(async (auth, req) => {
-  // 2. Comment out the protection logic so everything passes through
-  // if (isProtectedRoute(req)) {
-  //   await auth.protect();
-  // }
-});
+export default function proxy(request: NextRequest) {
+  const { pathname, search } = request.nextUrl;
+
+  const isProtectedRoute = protectedRoutes.some((route) =>
+    pathname.startsWith(route)
+  );
+
+  if (isProtectedRoute) {
+    const token = request.cookies.get('accessToken')?.value;
+
+    if (!token) {
+      // 1. Create the base URL for the login page
+      const loginUrl = new URL('/', request.url);
+      
+      // 2. Append the path they were trying to visit (including any query parameters)
+      // e.g., ?callbackUrl=/worker?tab=shifts
+      loginUrl.searchParams.set('callbackUrl', pathname + search);
+      
+      // 3. Redirect them with the new parameter attached
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
+  return NextResponse.next();
+}
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and all static files, unless found in search params
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    // Always run for API routes
     "/(api|trpc)(.*)",
   ],
 };
