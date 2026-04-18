@@ -10,8 +10,11 @@ type Platform = {
 };
 
 export default function ShiftLoggingModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const [state, formAction, isPending] = useActionState(logShiftAction, { error: undefined, success: false });
-  
+const [state, formAction, isPending] = useActionState(logShiftAction, { 
+  error: undefined, 
+  success: false, 
+  data: null // Add this line
+});  
   const [platforms, setPlatforms] = useState<Platform[]>([]);
   const [isLoadingPlatforms, setIsLoadingPlatforms] = useState(false);
 
