@@ -1,14 +1,10 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+// Simple middleware for custom authentication
+// This can be extended later for route protection if needed
 
-// 1. Comment out the route matcher
-// const isProtectedRoute = createRouteMatcher(["/posts(.*)", "/dashboard(.*)"]);
-
-export default clerkMiddleware(async (auth, req) => {
-  // 2. Comment out the protection logic so everything passes through
-  // if (isProtectedRoute(req)) {
-  //   await auth.protect();
-  // }
-});
+export default function middleware() {
+  // For now, just pass through all requests
+  // Custom authentication logic can be added here later
+}
 
 export const config = {
   matcher: [
