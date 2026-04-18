@@ -2,6 +2,11 @@ node_modules
 # Keep environment variables out of version control
 .env
 
+dist/
+# Ignore generated JavaScript build artifacts
+src/**/*.js
+src/**/*.js.map
+
 /generated/prisma
 
 /src/generated/prisma
