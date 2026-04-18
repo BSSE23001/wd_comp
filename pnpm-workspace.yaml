@@ -1,5 +1,4 @@
 packages:
   - "fe"
   - "api/*"
-  - "shared"
   - "pris_client"
