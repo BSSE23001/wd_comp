@@ -31,13 +31,13 @@ export default function Home() {
           <p className="text-xl font-bold tracking-tight text-blue-900">FairGig</p>
           <nav className="flex items-center gap-2 sm:gap-3" aria-label="Authentication">
             <Link
-              href="/sign-in"
+              href="/login"
               className="inline-flex h-11 items-center justify-center rounded-full px-4 text-sm font-medium text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"
             >
               Log In
             </Link>
             <Link
-              href="/sign-up"
+              href="/signup"
               className="inline-flex h-11 items-center justify-center rounded-full bg-blue-700 px-4 text-sm font-medium text-white hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"
             >
               Sign Up
