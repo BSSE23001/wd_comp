@@ -1,4 +1,3 @@
-// app/home/dashboard-client.tsx
 "use client";
 
 import { useMemo, useState } from "react";
@@ -23,18 +22,33 @@ import {
 } from "recharts";
 import ShiftLoggingModal from "@/components/ShiftLoggingModal";
 
-import {
-  PlatformFilter,
-  platformOptions,
-  weeklyIncome,
-  ledger,
-  statusStyles,
-  verifiedEarnings,
-  pendingReview,
-  hourlyRate,
-} from "@/utils/placeholder-data";
+// --- Types ---
 
-function currency(value: number) {
+type User = {
+  id: string;
+  email: string;
+  role: string;
+  first_name?: string;
+  last_name?: string;
+};
+
+type ShiftLog = {
+  id: string;
+  date: string;
+  platform: { name: string };
+  netReceived: number;
+  hoursWorked: number;
+  status: "VERIFIED" | "PENDING" | "REJECTED";
+};
+
+interface DashboardClientProps {
+  user: User;
+  initialLogs: ShiftLog[];
+}
+
+// --- Helpers ---
+
+function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -42,7 +56,7 @@ function currency(value: number) {
   }).format(value);
 }
 
-function currencyPrecise(value: number) {
+function formatCurrencyPrecise(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -51,33 +65,66 @@ function currencyPrecise(value: number) {
   }).format(value);
 }
 
-// 1. Define the User type based on your API response
-type User = {
-  id: string;
-  email: string;
-  role: string;
-  first_name?: string; 
-  last_name?: string;
+const statusStyles: Record<string, string> = {
+  VERIFIED: "bg-emerald-50 text-emerald-700 border border-emerald-100",
+  PENDING: "bg-amber-50 text-amber-700 border border-amber-100",
+  REJECTED: "bg-red-50 text-red-700 border border-red-100",
 };
 
-// 2. Accept the user object as a prop
-export default function DashboardClient({ user }: { user: User }) {
-  const [platform, setPlatform] = useState<PlatformFilter>("All Platforms");
+export default function DashboardClient({ user, initialLogs }: DashboardClientProps) {
+  const [platformFilter, setPlatformFilter] = useState("All Platforms");
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
 
-  const chartData = useMemo(() => {
-    return weeklyIncome.map((row) => ({
-      day: row.day,
-      value:
-        platform === "All Platforms"
-          ? row.Uber + row.Foodpanda
-          : row[platform],
-    }));
-  }, [platform]);
+  // --- Dynamic Calculations ---
 
-  // 3. Dynamically calculate the display name and initial
-  // Fallback to the first part of the email if first_name isn't provided by the login API yet
-  const rawName = user.first_name || user.email.split('@')[0];
+  // 1. Total Net Revenue (All logs regardless of status)
+  const totalNetRevenue = useMemo(() => {
+    return initialLogs.reduce((sum, log) => sum + Number(log.netReceived), 0);
+  }, [initialLogs]);
+
+  // 2. Verified Earnings (Current logs with VERIFIED status)
+  const verifiedEarnings = useMemo(() => {
+    return initialLogs
+      .filter((log) => log.status === "VERIFIED")
+      .reduce((sum, log) => sum + Number(log.netReceived), 0);
+  }, [initialLogs]);
+
+  // 3. Pending Review (Current logs with PENDING status)
+  const pendingReview = useMemo(() => {
+    return initialLogs
+      .filter((log) => log.status === "PENDING")
+      .reduce((sum, log) => sum + Number(log.netReceived), 0);
+  }, [initialLogs]);
+
+  // 4. Effective Hourly Rate (Total Net / Total Hours)
+  const hourlyRate = useMemo(() => {
+    const totalHours = initialLogs.reduce((sum, log) => sum + (Number(log.hoursWorked) || 0), 0);
+    const totalNet = initialLogs.reduce((sum, log) => sum + Number(log.netReceived), 0);
+    return totalHours > 0 ? totalNet / totalHours : 0;
+  }, [initialLogs]);
+
+  // 4. Chart Data (Group last 7 logs by weekday)
+  const chartData = useMemo(() => {
+    const dailyMap: Record<string, number> = {};
+    const last7Logs = initialLogs.slice(0, 10); // Take a sample to build the 7-day view
+
+    last7Logs.forEach((log) => {
+      const day = new Date(log.date).toLocaleDateString("en-US", { weekday: "short" });
+      if (platformFilter === "All Platforms" || log.platform.name === platformFilter) {
+        dailyMap[day] = (dailyMap[day] || 0) + Number(log.netReceived);
+      }
+    });
+
+    return Object.entries(dailyMap).map(([day, value]) => ({ day, value }));
+  }, [initialLogs, platformFilter]);
+
+  // 5. Extract unique platform names for the filter dropdown
+  const platformOptions = useMemo(() => {
+    const names = Array.from(new Set(initialLogs.map((log) => log.platform.name)));
+    return ["All Platforms", ...names];
+  }, [initialLogs]);
+
+  const rawName = user.first_name || user.email.split("@")[0];
   const displayName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
   const userInitial = displayName.charAt(0).toUpperCase();
 
@@ -91,7 +138,6 @@ export default function DashboardClient({ user }: { user: User }) {
           <div>
             <p className="text-sm font-medium text-slate-500">Welcome back</p>
             <h1 className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
-              {/* Inject the dynamic name here */}
               Welcome back, {displayName}
             </h1>
           </div>
@@ -99,17 +145,16 @@ export default function DashboardClient({ user }: { user: User }) {
           <div className="flex items-center gap-3">
             <div className="relative">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-900 text-lg font-semibold text-white">
-                {/* Inject the dynamic initial here */}
                 {userInitial}
               </div>
               <span className="absolute -bottom-0.5 -right-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white shadow ring-2 ring-white">
                 <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
               </span>
-              <span className="sr-only">Verified account badge</span>
             </div>
             <div className="hidden sm:block">
-              {/* Dynamically show their role */}
-              <p className="text-sm font-semibold text-slate-900 capitalize">{user.role.toLowerCase()} profile</p>
+              <p className="text-sm font-semibold text-slate-900 capitalize">
+                {user.role.toLowerCase()} profile
+              </p>
               <p className="flex items-center gap-1 text-sm text-emerald-700">
                 <ShieldCheck className="h-4 w-4" aria-hidden="true" />
                 Worker trust badge active
@@ -118,18 +163,32 @@ export default function DashboardClient({ user }: { user: User }) {
           </div>
         </header>
 
-        {/* --- The rest of your sections remain EXACTLY the same --- */}
         <section aria-label="Hero metrics">
-          <div className="grid grid-flow-col auto-cols-[minmax(16rem,1fr)] gap-4 overflow-x-auto pb-1 sm:auto-cols-auto sm:grid-cols-3 sm:overflow-visible">
+          <div className="grid grid-flow-col auto-cols-[minmax(16rem,1fr)] gap-4 overflow-x-auto pb-1 sm:auto-cols-auto sm:grid-cols-4 sm:overflow-visible">
             <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-medium text-slate-500">Verified Earnings (This Month)</p>
+                <p className="text-sm font-medium text-slate-500">Total Net Revenue</p>
+                <CircleDollarSign className="h-5 w-5 text-blue-600" aria-hidden="true" />
+              </div>
+              <p className="mt-4 text-4xl font-extrabold tracking-tight text-blue-700 sm:text-5xl">
+                {formatCurrency(totalNetRevenue)}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Combined revenue across all logged shifts.
+              </p>
+            </article>
+
+            <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-medium text-slate-500">Verified Earnings</p>
                 <CircleDollarSign className="h-5 w-5 text-emerald-600" aria-hidden="true" />
               </div>
               <p className="mt-4 text-4xl font-extrabold tracking-tight text-emerald-700 sm:text-5xl">
-                {currency(verifiedEarnings)}
+                {formatCurrency(verifiedEarnings)}
               </p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">Bankable income approved for records and certificates.</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Bankable income approved for records and certificates.
+              </p>
             </article>
 
             <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -138,7 +197,7 @@ export default function DashboardClient({ user }: { user: User }) {
                 <ChevronUp className="h-5 w-5 rotate-90 text-amber-500" aria-hidden="true" />
               </div>
               <p className="mt-4 text-4xl font-extrabold tracking-tight text-amber-600 sm:text-5xl">
-                {currency(pendingReview)}
+                {formatCurrency(pendingReview)}
               </p>
               <p className="mt-2 text-sm leading-6 text-slate-600">Income currently under verification.</p>
             </article>
@@ -152,9 +211,9 @@ export default function DashboardClient({ user }: { user: User }) {
                 </div>
               </div>
               <p className="mt-4 text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">
-                {currencyPrecise(hourlyRate)}/hr
+                {formatCurrencyPrecise(hourlyRate)}/hr
               </p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">A simple average that stays easy to read on mobile.</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">Calculated across all logged hours.</p>
             </article>
           </div>
         </section>
@@ -171,7 +230,7 @@ export default function DashboardClient({ user }: { user: User }) {
             <button
               type="button"
               onClick={() => setIsShiftModalOpen(true)}
-              className="inline-flex min-h-14 items-center justify-center gap-3 rounded-2xl bg-slate-900 px-4 py-4 text-base font-semibold text-white shadow-sm transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
+              className="inline-flex min-h-14 items-center justify-center gap-3 rounded-2xl bg-slate-900 px-4 py-4 text-base font-semibold text-white shadow-sm transition hover:bg-slate-800"
             >
               <Plus className="h-5 w-5" aria-hidden="true" />
               Log New Shift
@@ -179,7 +238,7 @@ export default function DashboardClient({ user }: { user: User }) {
 
             <button
               type="button"
-              className="inline-flex min-h-14 items-center justify-center gap-3 rounded-2xl border border-slate-300 bg-white px-4 py-4 text-base font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
+              className="inline-flex min-h-14 items-center justify-center gap-3 rounded-2xl border border-slate-300 bg-white px-4 py-4 text-base font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50"
             >
               <Camera className="h-5 w-5" aria-hidden="true" />
               Upload Proof
@@ -187,7 +246,7 @@ export default function DashboardClient({ user }: { user: User }) {
 
             <button
               type="button"
-              className="inline-flex min-h-14 items-center justify-center gap-3 rounded-2xl border border-slate-300 bg-white px-4 py-4 text-base font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
+              className="inline-flex min-h-14 items-center justify-center gap-3 rounded-2xl border border-slate-300 bg-white px-4 py-4 text-base font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50"
             >
               <FileText className="h-5 w-5" aria-hidden="true" />
               Get Certificate
@@ -199,17 +258,16 @@ export default function DashboardClient({ user }: { user: User }) {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-slate-950">Income Analytics</h2>
-              <p className="text-sm text-slate-600">Daily net income over the last 7 days.</p>
+              <p className="text-sm text-slate-600">Daily net income trend.</p>
             </div>
 
             <label htmlFor="platform-filter" className="flex flex-col gap-1 text-sm font-medium text-slate-700">
               Filter by platform
               <select
                 id="platform-filter"
-                value={platform}
-                onChange={(event) => setPlatform(event.target.value as PlatformFilter)}
+                value={platformFilter}
+                onChange={(e) => setPlatformFilter(e.target.value)}
                 className="min-h-11 rounded-xl border border-slate-300 bg-slate-50 px-3 text-sm font-medium text-slate-900 shadow-sm focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/20"
-                aria-label="Filter income chart by platform"
               >
                 {platformOptions.map((option) => (
                   <option key={option} value={option}>
@@ -248,20 +306,6 @@ export default function DashboardClient({ user }: { user: User }) {
           </div>
         </section>
 
-        <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5 shadow-sm sm:p-6" aria-label="Community pulse alert">
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-amber-200 text-amber-900">
-              <span className="text-lg font-black" aria-hidden="true">!</span>
-            </div>
-            <div>
-              <h2 className="text-base font-semibold text-amber-950">Community Pulse</h2>
-              <p className="mt-1 text-sm leading-6 text-amber-950">
-                ⚠️ Alert: 15 workers in your area reported a 2% commission drop on Platform X today.
-              </p>
-            </div>
-          </div>
-        </section>
-
         <section aria-label="Recent activity" className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -271,34 +315,45 @@ export default function DashboardClient({ user }: { user: User }) {
           </div>
 
           <div className="mt-5 space-y-3">
-            {ledger.map((row) => (
-              <article
-                key={`${row.date}-${row.platform}-${row.amount}`}
-                className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
-              >
-                <div>
-                  <p className="text-sm font-semibold text-slate-950">{row.date}</p>
-                  <p className="text-sm text-slate-600">{row.platform}</p>
-                </div>
+            {initialLogs.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 text-center">
+                <p className="text-sm font-medium text-slate-400">No shifts logged yet.</p>
+              </div>
+            ) : (
+              initialLogs.map((log) => (
+                <article
+                  key={log.id}
+                  className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-slate-950">
+                      {new Date(log.date).toLocaleDateString("en-GB", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </p>
+                    <p className="text-sm text-slate-600">{log.platform.name}</p>
+                  </div>
 
-                <div className="text-right">
-                  <p className="text-base font-bold text-slate-950">{row.amount}</p>
-                  <span
-                    className={`mt-1 inline-flex min-h-8 items-center rounded-full px-3 text-xs font-semibold ${statusStyles[row.status]}`}
-                  >
-                    {row.status}
-                  </span>
-                </div>
-              </article>
-            ))}
+                  <div className="text-right">
+                    <p className="text-base font-bold text-slate-950">{formatCurrencyPrecise(log.netReceived)}</p>
+                    <span
+                      className={`mt-1 inline-flex min-h-7 items-center rounded-full px-3 text-[10px] font-bold tracking-wide uppercase border ${
+                        statusStyles[log.status] || "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      {log.status}
+                    </span>
+                  </div>
+                </article>
+              ))
+            )}
           </div>
         </section>
       </div>
 
-      <ShiftLoggingModal
-        isOpen={isShiftModalOpen}
-        onClose={() => setIsShiftModalOpen(false)}
-      />
+      <ShiftLoggingModal isOpen={isShiftModalOpen} onClose={() => setIsShiftModalOpen(false)} />
     </main>
   );
 }
