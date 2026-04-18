@@ -1,7 +1,7 @@
 // components/signup-form.tsx
 'use client' 
 
-import { useActionState } from "react"
+import { useActionState, useState } from "react"
 import { signupAction } from "@/app/actions/auth"
 import { Button } from "@/components/ui/button"
 import {
@@ -25,6 +25,9 @@ const initialState = {
 
 export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
   const [state, formAction, isPending] = useActionState(signupAction, initialState)
+  
+  // Track the selected role to conditionally render form fields
+  const [selectedRole, setSelectedRole] = useState("WORKER")
 
   return (
     <Card {...props}>
@@ -38,7 +41,21 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
         <form action={formAction}>
           <FieldGroup>
             
-            {/* Replaced Full Name with a grid for First and Last Name */}
+            {/* Role Selection */}
+            <Field>
+              <FieldLabel htmlFor="role">Register As</FieldLabel>
+              <select 
+                id="role" 
+                name="role" 
+                value={selectedRole}
+                onChange={(e) => setSelectedRole(e.target.value)}
+                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="WORKER">Worker</option>
+                <option value="VERIFIER">Verifier</option>
+              </select>
+            </Field>
+
             <div className="grid grid-cols-2 gap-4">
               <Field>
                 <FieldLabel htmlFor="first-name">First Name</FieldLabel>
@@ -59,11 +76,30 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
                 placeholder="m@example.com"
                 required
               />
-              <FieldDescription>
-                We&apos;ll use this to contact you. We will not share your email
-                with anyone else.
-              </FieldDescription>
             </Field>
+
+            {/* Conditionally render Worker-specific fields */}
+            {selectedRole === "WORKER" && (
+              <div className="grid grid-cols-2 gap-4 border-y py-4 my-2">
+                <Field>
+                  <FieldLabel htmlFor="category">Work Category</FieldLabel>
+                  <select 
+                    id="category" 
+                    name="category" 
+                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  >
+                    <option value="RIDE_HAILING">Ride Hailing</option>
+                    <option value="FOOD_DELIVERY">Food Delivery</option>
+                    <option value="FREELANCE">Freelance</option>
+                  </select>
+                </Field>
+
+                <Field>
+                  <FieldLabel htmlFor="cityZone">City Zone</FieldLabel>
+                  <Input id="cityZone" name="cityZone" type="text" placeholder="e.g., Downtown" required={selectedRole === "WORKER"} />
+                </Field>
+              </div>
+            )}
 
             <Field>
               <FieldLabel htmlFor="password">Password</FieldLabel>
@@ -78,7 +114,6 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
                 Confirm Password
               </FieldLabel>
               <Input id="confirm-password" name="confirm-password" type="password" required />
-              <FieldDescription>Please confirm your password.</FieldDescription>
             </Field>
 
             {state?.error && (
@@ -92,11 +127,8 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
                 <Button type="submit" disabled={isPending}>
                   {isPending ? "Creating..." : "Create Account"}
                 </Button>
-                <Button variant="outline" type="button">
-                  Sign up with Google
-                </Button>
-                <FieldDescription className="px-6 text-center">
-                  Already have an account? <a href="/">Sign in</a>
+                <FieldDescription className="px-6 text-center mt-4">
+                  Already have an account? <a href="/" className="underline">Sign in</a>
                 </FieldDescription>
               </Field>
             </FieldGroup>
