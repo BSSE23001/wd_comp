@@ -15,6 +15,8 @@ importers:
         specifier: ^2.9.6
         version: 2.9.6
 
+  api/anomaly: {}
+
   api/auth-service:
     dependencies:
       '@repo/prisma':

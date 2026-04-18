@@ -1,0 +1,7 @@
+{
+  "name": "python-microservice",
+  "scripts": {
+    "postinstall": "uv pip install -r requirements.txt",
+    "dev": "uv run python main.py"
+  }
+}
