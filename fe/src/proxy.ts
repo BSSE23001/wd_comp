@@ -1,12 +1,13 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-// Protect everything inside (dashboard) route group
-const isProtectedRoute = createRouteMatcher(["/posts(.*)", "/dashboard(.*)"]);
+// 1. Comment out the route matcher
+// const isProtectedRoute = createRouteMatcher(["/posts(.*)", "/dashboard(.*)"]);
 
 export default clerkMiddleware(async (auth, req) => {
-  if (isProtectedRoute(req)) {
-    await auth.protect();
-  }
+  // 2. Comment out the protection logic so everything passes through
+  // if (isProtectedRoute(req)) {
+  //   await auth.protect();
+  // }
 });
 
 export const config = {
