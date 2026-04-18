@@ -18,21 +18,31 @@ export const getQueue = async (req: AuthRequest, res: Response) => {
 export const updateVerification = async (req: AuthRequest, res: Response) => {
   try {
     const verifierId = req.user!.id;
-    const id = (
-      Array.isArray(req.query.id) ? req.query.id[0] : req.query.id
-    ) as string;
+    
+    // 1. Force TypeScript to recognize this as a single string
+    const id = req.params.id as string;
+
+    // 2. SAFETY CHECK
+    if (!id) {
+      return res.status(400).json({ error: "Missing log ID in the URL path." });
+    }
+
     const { status, verifierNotes } = req.body;
 
+    // 3. DATABASE UPDATE
     const log = await prisma.shiftLog.update({
-      where: { id },
+      where: { id }, // TypeScript is now happy!
       data: {
-        status: status as VerificationStatus,
+        status: status as VerificationStatus, 
         verifierId,
-        verifierNotes,
+        verifierNotes: verifierNotes || "", 
       },
     });
-    res.json({ message: "Log verified", log });
-  } catch (error) {
+
+    res.status(200).json({ message: "Log verified successfully", log });
+
+  } catch (error: any) {
+    console.error(">>> UPDATE_VERIFICATION_ERROR:", error.message);
     res.status(500).json({ error: "Failed to update log" });
   }
 };

@@ -4,8 +4,11 @@ import { redirect } from 'next/navigation'
 import DashboardClient from './dashboard-client'
 import { logoutAction } from '@/app/actions/auth' // Import the action
 import { LogOut } from 'lucide-react' // Optional: icon for the button
+import { getEarningsLogsAction } from '@/app/actions/earnings';
 
 export default async function WorkerPage() {
+  const logsData = await getEarningsLogsAction(1, 20); // Fetch first 20 logs
+
   const cookieStore = await cookies()
   const userCookie = cookieStore.get('user')?.value
 
@@ -37,7 +40,8 @@ export default async function WorkerPage() {
       </div>
 
       {/* Main Dashboard */}
-      <DashboardClient user={user} />
+      <DashboardClient user={user} 
+      initialLogs={logsData || []} />
     </div>
   )
 }
