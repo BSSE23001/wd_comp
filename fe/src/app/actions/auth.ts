@@ -20,17 +20,28 @@ export async function loginAction(formData: FormData) {
     })
 
     if (response.ok) {
-      const data = await response.json()
+      // Parse the response to get the nested 'data' object based on your API structure
+      const result = await response.json()
+      const { accessToken, user } = result.data 
       
-      // FIX: Await the cookies() promise before setting the cookie
       const cookieStore = await cookies()
       
-      cookieStore.set('accessToken', data.accessToken, { 
+      // Store the Access Token
+      cookieStore.set('accessToken', accessToken, { 
         httpOnly: true, 
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         path: '/',
-        maxAge: 60 * 60 * 24 
+        maxAge: 60 * 60 * 24 // 1 day
+      })
+
+      // Store the User Data (Stringified) so the frontend can read it
+      cookieStore.set('user', JSON.stringify(user), { 
+        httpOnly: true, 
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 // 1 day
       })
       
       isSuccess = true;
@@ -45,8 +56,6 @@ export async function loginAction(formData: FormData) {
     redirect('/')
   }
 }
-
-
 
 export async function signupAction(prevState: any, formData: FormData) {
   // Grab the separated name fields
