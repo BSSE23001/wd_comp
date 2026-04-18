@@ -6,7 +6,11 @@ import { parse } from "csv-parse/sync";
 
 export const logEarnings = async (req: AuthRequest, res: Response) => {
   try {
-    const workerId = req.user!.id;
+    const workerId = req.user?.id;
+    if (!workerId) {
+      return res.status(401).json({ error: "Unauthorized", message: "User ID missing from token." });
+    }
+
     const {
       platformId,
       date,
@@ -17,31 +21,71 @@ export const logEarnings = async (req: AuthRequest, res: Response) => {
       currency,
     } = req.body;
 
-    let screenshotUrl = null;
-    if (req.file) {
-      screenshotUrl = await uploadScreenshot(
-        req.file.buffer,
-        req.file.originalname,
-      );
+    // 1. Basic Validation Check
+    if (!platformId || !date || !netReceived) {
+      return res.status(400).json({ 
+        error: "Validation Failed", 
+        message: "platformId, date, and netReceived are required fields." 
+      });
     }
 
+    let screenshotUrl = null;
+    if (req.file) {
+      try {
+        screenshotUrl = await uploadScreenshot(
+          req.file.buffer,
+          req.file.originalname,
+        );
+      } catch (uploadErr) {
+        console.error("Screenshot upload failed:", uploadErr);
+        return res.status(500).json({ error: "Upload Failed", message: "Failed to upload screenshot to storage." });
+      }
+    }
+
+    // 2. Prisma Create with Number Parsing Safety
     const log = await prisma.shiftLog.create({
       data: {
         workerId,
         platformId,
         date: new Date(date),
-        hoursWorked: parseFloat(hoursWorked),
-        grossEarned: parseFloat(grossEarned),
-        platformDeductions: parseFloat(platformDeductions),
-        netReceived: parseFloat(netReceived),
+        // Use || 0 to prevent NaN (Not a Number) from crashing Prisma
+        hoursWorked: parseFloat(hoursWorked) || 0,
+        grossEarned: parseFloat(grossEarned) || 0,
+        platformDeductions: parseFloat(platformDeductions) || 0,
+        netReceived: parseFloat(netReceived) || 0,
         currency: currency || "PKR",
         screenshotUrl,
       },
     });
 
-    res.status(201).json({ message: "Log created", log });
-  } catch (error) {
-    res.status(500).json({ error: "Failed to create log" });
+    res.status(201).json({ message: "Log created successfully", log });
+
+  } catch (error: any) {
+    // 3. Detailed Server Logging
+    console.error(">>> EARNINGS_LOG_ERROR:", error);
+
+    // Handle Specific Prisma Error: Foreign Key Constraint (P2003)
+    if (error.code === 'P2003') {
+      return res.status(400).json({ 
+        error: "Database Constraint Error", 
+        message: `The provided platformId (${req.body.platformId}) does not exist in the database.` 
+      });
+    }
+
+    // Handle Specific Prisma Error: Invalid Data Type (P2002, etc.)
+    if (error.name === 'PrismaClientKnownRequestError') {
+      return res.status(400).json({ 
+        error: "Prisma Error", 
+        message: error.message,
+        code: error.code 
+      });
+    }
+
+    // Final Fallback
+    res.status(500).json({ 
+      error: "Internal Server Error", 
+      message: error.message || "An unexpected error occurred while creating the log." 
+    });
   }
 };
 
