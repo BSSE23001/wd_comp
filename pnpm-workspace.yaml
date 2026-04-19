@@ -2,3 +2,7 @@ packages:
   - "fe"
   - "api/*"
   - "pris_client"
+
+allowBuilds:
+  "@prisma/engines": true
+  "prisma": true
