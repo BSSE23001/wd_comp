@@ -1,0 +1,17 @@
+node_modules
+**/node_modules
+.git
+.turbo
+dist
+**/dist
+.next
+**/.next
+coverage
+**/coverage
+*.log
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.venv
+**/.env
+**/.DS_Store

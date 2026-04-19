@@ -1,0 +1,122 @@
+services:
+  postgres:
+    profiles: ["local-db"]
+    image: postgres:16-alpine
+    container_name: fairgig-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-fairgig}
+      POSTGRES_USER: ${POSTGRES_USER:-fairgig}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fairgig}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-fairgig} -d ${POSTGRES_DB:-fairgig}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  prisma-sync:
+    profiles: ["schema-sync"]
+    build:
+      context: .
+      dockerfile: pris_client/Dockerfile
+    container_name: fairgig-prisma-sync
+    restart: "no"
+    env_file:
+      - path: ./api/auth-service/.env
+        required: false
+      - path: ./api/earnings/.env
+        required: false
+      - path: ./api/grievances/.env
+        required: false
+      - path: ./api/analytics/.env
+        required: false
+    command: ["pnpm", "--filter", "@repo/prisma", "db:push"]
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: api/auth-service/Dockerfile
+    container_name: fairgig-auth-service
+    restart: unless-stopped
+    env_file:
+      - path: ./api/auth-service/.env
+        required: false
+    ports:
+      - "5000:5000"
+
+  earnings:
+    build:
+      context: .
+      dockerfile: api/earnings/Dockerfile
+    container_name: fairgig-earnings
+    restart: unless-stopped
+    env_file:
+      - path: ./api/earnings/.env
+        required: false
+    ports:
+      - "4001:4001"
+
+  anomaly:
+    build:
+      context: .
+      dockerfile: api/anomaly/Dockerfile
+    container_name: fairgig-anomaly
+    restart: unless-stopped
+    env_file:
+      - path: ./api/anomaly/.env
+        required: false
+    ports:
+      - "4002:4002"
+    depends_on:
+      earnings:
+        condition: service_started
+
+  certificate:
+    build:
+      context: .
+      dockerfile: api/certificate/Dockerfile
+    container_name: fairgig-certificate
+    restart: unless-stopped
+    env_file:
+      - path: ./api/certificate/.env
+        required: false
+    ports:
+      - "4003:4003"
+    depends_on:
+      earnings:
+        condition: service_started
+
+  grievances:
+    build:
+      context: .
+      dockerfile: api/grievances/Dockerfile
+    container_name: fairgig-grievances
+    restart: unless-stopped
+    env_file:
+      - path: ./api/grievances/.env
+        required: false
+    ports:
+      - "4004:4004"
+
+  analytics:
+    build:
+      context: .
+      dockerfile: api/analytics/Dockerfile
+    container_name: fairgig-analytics
+    restart: unless-stopped
+    env_file:
+      - path: ./api/analytics/.env
+        required: false
+    ports:
+      - "4005:4005"
+
+volumes:
+  postgres_data:
