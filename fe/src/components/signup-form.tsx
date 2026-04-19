@@ -1,140 +1,140 @@
-// components/signup-form.tsx
-'use client' 
+"use client";
 
-import { useActionState, useState } from "react"
-import { signupAction } from "@/app/actions/auth"
-import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+import { useActionState, useState } from "react";
+import { signupAction } from "@/app/actions/auth";
+import { Loader2, AlertCircle, Briefcase, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 
 const initialState = {
   error: undefined,
-}
+};
 
-export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
-  const [state, formAction, isPending] = useActionState(signupAction, initialState)
-  
-  // Track the selected role to conditionally render form fields
-  const [selectedRole, setSelectedRole] = useState("WORKER")
+export function SignupForm() {
+  const [state, formAction, isPending] = useActionState(signupAction, initialState);
+  const [selectedRole, setSelectedRole] = useState("WORKER");
 
   return (
-    <Card {...props}>
-      <CardHeader>
-        <CardTitle>Create an account</CardTitle>
-        <CardDescription>
-          Enter your information below to create your account
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form action={formAction}>
-          <FieldGroup>
-            
-            {/* Role Selection */}
-            <Field>
-              <FieldLabel htmlFor="role">Register As</FieldLabel>
-              <select 
-                id="role" 
-                name="role" 
-                value={selectedRole}
-                onChange={(e) => setSelectedRole(e.target.value)}
-                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+    <div className="w-full bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
+      <div className="text-center mb-8">
+        <h2 className="text-2xl font-bold text-slate-900">Create an Account</h2>
+        <p className="text-sm text-slate-500 mt-1">Join the FairGig platform</p>
+      </div>
+
+      <form action={formAction} className="flex flex-col gap-5">
+        
+        {/* Role Selection Tabs */}
+        <div className="flex p-1 bg-slate-100 rounded-xl">
+          <button
+            type="button"
+            onClick={() => setSelectedRole("WORKER")}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-semibold rounded-lg transition ${
+              selectedRole === "WORKER" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            <Briefcase className="h-4 w-4" /> Worker
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedRole("VERIFIER")}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-semibold rounded-lg transition ${
+              selectedRole === "VERIFIER" ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            <ShieldCheck className="h-4 w-4" /> Verifier
+          </button>
+        </div>
+        <input type="hidden" name="role" value={selectedRole} />
+
+        {state?.error && (
+          <div className="flex items-start gap-2 p-3 bg-rose-50 text-rose-700 text-sm font-medium rounded-xl border border-rose-100">
+            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+            <p>{state.error}</p>
+          </div>
+        )}
+
+        <div className="space-y-1.5">
+          <label htmlFor="email" className="text-sm font-semibold text-slate-700">Email Address</label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            placeholder="name@example.com"
+            required
+            className="flex h-12 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-2 text-sm focus:border-blue-600 focus:bg-white focus:ring-1 focus:ring-blue-600 outline-none transition"
+          />
+        </div>
+
+        {selectedRole === "WORKER" && (
+          <div className="grid grid-cols-2 gap-4 border-y border-slate-100 py-4 my-2">
+            <div className="space-y-1.5">
+              <label htmlFor="category" className="text-sm font-semibold text-slate-700">Category</label>
+              <select
+                id="category"
+                name="category"
+                className="flex h-12 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-2 text-sm focus:border-blue-600 focus:bg-white focus:ring-1 focus:ring-blue-600 outline-none transition"
               >
-                <option value="WORKER">Worker</option>
-                <option value="VERIFIER">Verifier</option>
+                <option value="RIDE_HAILING">Ride Hailing</option>
+                <option value="FOOD_DELIVERY">Food Delivery</option>
+                <option value="FREELANCE_DESIGNER">Freelance</option>
+                <option value="DOMESTIC_WORKER">Domestic</option>
               </select>
-            </Field>
-
-            <div className="grid grid-cols-2 gap-4">
-              <Field>
-                <FieldLabel htmlFor="first-name">First Name</FieldLabel>
-                <Input id="first-name" name="first_name" type="text" placeholder="John" required />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="last-name">Last Name</FieldLabel>
-                <Input id="last-name" name="last_name" type="text" placeholder="Doe" required />
-              </Field>
             </div>
-            
-            <Field>
-              <FieldLabel htmlFor="email">Email</FieldLabel>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="m@example.com"
-                required
+
+            <div className="space-y-1.5">
+              <label htmlFor="cityZone" className="text-sm font-semibold text-slate-700">City Zone</label>
+              <input 
+                id="cityZone" 
+                name="cityZone" 
+                type="text" 
+                placeholder="e.g. Downtown" 
+                required={selectedRole === "WORKER"} 
+                className="flex h-12 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-2 text-sm focus:border-blue-600 focus:bg-white focus:ring-1 focus:ring-blue-600 outline-none transition"
               />
-            </Field>
+            </div>
+          </div>
+        )}
 
-            {/* Conditionally render Worker-specific fields */}
-            {selectedRole === "WORKER" && (
-              <div className="grid grid-cols-2 gap-4 border-y py-4 my-2">
-                <Field>
-                  <FieldLabel htmlFor="category">Work Category</FieldLabel>
-                  <select 
-                    id="category" 
-                    name="category" 
-                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                  >
-                    <option value="RIDE_HAILING">Ride Hailing</option>
-                    <option value="FOOD_DELIVERY">Food Delivery</option>
-                    <option value="FREELANCE">Freelance</option>
-                  </select>
-                </Field>
+        <div className="space-y-1.5">
+          <label htmlFor="password" className="text-sm font-semibold text-slate-700">Password</label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            placeholder="Minimum 8 characters"
+            required
+            minLength={8}
+            className="flex h-12 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-2 text-sm focus:border-blue-600 focus:bg-white focus:ring-1 focus:ring-blue-600 outline-none transition"
+          />
+        </div>
 
-                <Field>
-                  <FieldLabel htmlFor="cityZone">City Zone</FieldLabel>
-                  <Input id="cityZone" name="cityZone" type="text" placeholder="e.g., Downtown" required={selectedRole === "WORKER"} />
-                </Field>
-              </div>
-            )}
+        <div className="space-y-1.5">
+          <label htmlFor="confirm-password" className="text-sm font-semibold text-slate-700">Confirm Password</label>
+          <input
+            id="confirm-password"
+            name="confirm-password"
+            type="password"
+            placeholder="Confirm your password"
+            required
+            minLength={8}
+            className="flex h-12 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-2 text-sm focus:border-blue-600 focus:bg-white focus:ring-1 focus:ring-blue-600 outline-none transition"
+          />
+        </div>
 
-            <Field>
-              <FieldLabel htmlFor="password">Password</FieldLabel>
-              <Input id="password" name="password" type="password" required />
-              <FieldDescription>
-                Must be at least 8 characters long.
-              </FieldDescription>
-            </Field>
+        <button
+          type="submit"
+          disabled={isPending}
+          className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 text-sm font-bold text-white shadow-md hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 disabled:opacity-50 transition"
+        >
+          {isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : "Create Account"}
+        </button>
 
-            <Field>
-              <FieldLabel htmlFor="confirm-password">
-                Confirm Password
-              </FieldLabel>
-              <Input id="confirm-password" name="confirm-password" type="password" required />
-            </Field>
-
-            {state?.error && (
-              <div className="text-sm font-medium text-destructive text-red-500">
-                {state.error}
-              </div>
-            )}
-
-            <FieldGroup>
-              <Field>
-                <Button type="submit" disabled={isPending}>
-                  {isPending ? "Creating..." : "Create Account"}
-                </Button>
-                <FieldDescription className="px-6 text-center mt-4">
-                  Already have an account? <a href="/" className="underline">Sign in</a>
-                </FieldDescription>
-              </Field>
-            </FieldGroup>
-          </FieldGroup>
-        </form>
-      </CardContent>
-    </Card>
-  )
+        <div className="mt-4 text-center text-sm text-slate-500 font-medium">
+          Already have an account?{" "}
+          <Link href="/login" className="text-blue-600 hover:text-blue-800 transition">
+            Sign in
+          </Link>
+        </div>
+      </form>
+    </div>
+  );
 }

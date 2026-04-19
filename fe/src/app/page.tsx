@@ -1,44 +1,35 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { ArrowRight, ShieldCheck, TrendingUp, Users, FileText } from "lucide-react";
 
-const features = [
-  {
-    title: "Log Earnings",
-    description:
-      "Track shifts, bonuses, and platform deductions in one clear timeline.",
-  },
-  {
-    title: "Verify Income",
-    description:
-      "Upload screenshots and proof to create a trusted record of what you earned.",
-  },
-  {
-    title: "Get Certificates",
-    description:
-      "Generate shareable income reports for landlords, banks, or loan applications.",
-  },
-  {
-    title: "Community Voice",
-    description:
-      "Use an anonymous board to report issues and share rate intelligence with peers.",
-  },
-];
+export const metadata: Metadata = {
+  title: "FairGig - Take Back Control of Your Gig Earnings",
+  description: "FairGig empowers gig workers with unified income tracking, peer-verified records, anomaly detection, and a collective voice against unfair platform practices.",
+};
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-          <p className="text-xl font-bold tracking-tight text-blue-900">FairGig</p>
-          <nav className="flex items-center gap-2 sm:gap-3" aria-label="Authentication">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-200">
+      
+      {/* Navigation */}
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur-md">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white font-bold text-lg">
+              F
+            </div>
+            <p className="text-xl font-extrabold tracking-tight text-slate-900">FairGig</p>
+          </div>
+          <nav className="flex items-center gap-3">
             <Link
               href="/login"
-              className="inline-flex h-11 items-center justify-center rounded-full px-4 text-sm font-medium text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"
+              className="inline-flex h-10 items-center justify-center rounded-xl px-4 text-sm font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition"
             >
               Log In
             </Link>
             <Link
               href="/signup"
-              className="inline-flex h-11 items-center justify-center rounded-full bg-blue-700 px-4 text-sm font-medium text-white hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"
+              className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-900 px-5 text-sm font-semibold text-white hover:bg-slate-800 transition shadow-sm"
             >
               Sign Up
             </Link>
@@ -46,68 +37,113 @@ export default function Home() {
         </div>
       </header>
 
-      <main>
-        <section className="mx-auto w-full max-w-6xl px-4 pb-12 pt-12 sm:px-6 sm:pt-16 lg:px-8 lg:pt-20">
-          <div className="max-w-3xl">
-            <h1 className="text-balance text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">
-              Take Control of Your Gig Earnings
+      <main className="pt-24">
+        
+        {/* Hero Section */}
+        <section className="relative mx-auto w-full max-w-7xl px-6 py-20 lg:py-32">
+          {/* Background Glow */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-blue-400/20 rounded-full blur-[120px] pointer-events-none -z-10" />
+          
+          <div className="max-w-3xl text-center mx-auto">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-xs font-bold tracking-wide uppercase mb-6">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+              </span>
+              Empowering the Gig Economy
+            </div>
+            
+            <h1 className="text-5xl lg:text-7xl font-extrabold tracking-tight text-slate-900 leading-[1.1]">
+              Take Back Control of Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Gig Earnings.</span>
             </h1>
-            <p className="mt-5 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
-              FairGig helps gig workers unify income records across apps, verify what
-              they earned, and protect their rights when payout rules change.
+            
+            <p className="mt-6 text-lg lg:text-xl leading-relaxed text-slate-600 max-w-2xl mx-auto">
+              FairGig provides independent workers with a unified income record, peer-reviewed verification, and the collective power to challenge unfair platform pay practices.
             </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            
+            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
-                href="/sign-up"
-                className="inline-flex h-12 items-center justify-center rounded-full bg-blue-700 px-6 text-sm font-semibold text-white hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"
+                href="/signup"
+                className="inline-flex h-14 w-full sm:w-auto items-center justify-center gap-2 rounded-2xl bg-blue-600 px-8 text-base font-bold text-white hover:bg-blue-700 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-blue-600/20"
               >
-                Create Free Account
+                Create Free Account <ArrowRight className="h-5 w-5" />
               </Link>
             </div>
           </div>
         </section>
 
-        <section className="bg-white py-12 sm:py-16">
-          <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
-            <div className="rounded-2xl border border-blue-100 bg-blue-50 p-6 sm:p-8">
-              <h2 className="text-2xl font-semibold tracking-tight text-blue-950 sm:text-3xl">
-                Why FairGig Matters
+        {/* Feature Grid */}
+        <section className="bg-white border-t border-slate-200">
+          <div className="mx-auto w-full max-w-7xl px-6 py-20 lg:py-32">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl lg:text-4xl font-extrabold tracking-tight text-slate-900">
+                A Complete Toolkit for Gig Workers
               </h2>
-              <p className="mt-4 max-w-3xl text-base leading-7 text-slate-700">
-                Most gig workers get no unified record, no formal payslip, and no
-                warning when platforms change commission rates overnight. FairGig
-                gives workers a single source of truth and stronger evidence when
-                pay feels unfair.
+              <p className="mt-4 text-lg text-slate-600 max-w-2xl mx-auto">
+                Everything you need to verify, prove, and protect your income across multiple platforms.
               </p>
             </div>
-          </div>
-        </section>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              
+              <div className="bg-slate-50 border border-slate-200 rounded-3xl p-8 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+                <div className="h-12 w-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mb-6">
+                  <TrendingUp className="h-6 w-6" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">Log Earnings</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  Track shifts, bonuses, and platform deductions across Uber, Foodpanda, and more in one timeline.
+                </p>
+              </div>
 
-        <section className="py-12 sm:py-16">
-          <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
-            <h2 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-              Built for Everyday Gig Work
-            </h2>
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:mt-8 sm:grid-cols-2">
-              {features.map((feature) => (
-                <article
-                  key={feature.title}
-                  className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
-                >
-                  <h3 className="text-lg font-semibold text-slate-900">{feature.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-600 sm:text-base">
-                    {feature.description}
-                  </p>
-                </article>
-              ))}
+              <div className="bg-slate-50 border border-slate-200 rounded-3xl p-8 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+                <div className="h-12 w-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mb-6">
+                  <ShieldCheck className="h-6 w-6" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">Verify Income</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  Upload screenshots of your payouts. Our peer verifiers validate the data to create a trusted record.
+                </p>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200 rounded-3xl p-8 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+                <div className="h-12 w-12 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center mb-6">
+                  <FileText className="h-6 w-6" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">Get Certificates</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  Generate verifiable, beautifully formatted PDF income certificates for landlords or banks instantly.
+                </p>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200 rounded-3xl p-8 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+                <div className="h-12 w-12 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center mb-6">
+                  <Users className="h-6 w-6" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">Community Voice</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  Join the anonymous grievance board to report issues, share rate intel, and organize with peers.
+                </p>
+              </div>
+
             </div>
           </div>
         </section>
+
       </main>
 
-      <footer className="border-t border-slate-200 bg-white py-6">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-          <p>© {new Date().getFullYear()} FairGig. All rights reserved.</p>
+      {/* Footer */}
+      <footer className="border-t border-slate-200 bg-slate-50 py-12">
+        <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-6 px-6 sm:flex-row">
+          <div className="flex items-center gap-2">
+            <div className="flex h-6 w-6 items-center justify-center rounded bg-slate-900 text-white font-bold text-xs">
+              F
+            </div>
+            <p className="font-bold text-slate-900">FairGig</p>
+          </div>
+          <p className="text-sm font-medium text-slate-500">
+            © {new Date().getFullYear()} FairGig. Built for worker empowerment.
+          </p>
         </div>
       </footer>
     </div>

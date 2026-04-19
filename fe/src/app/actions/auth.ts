@@ -12,7 +12,7 @@ export async function loginAction(formData: FormData) {
   let redirectPath = '/'; // Default fallback
 
   try {
-    const response = await fetch('http://localhost:5000/api/auth/login', {
+    const response = await fetch(`${process.env.AUTH_SERVICE_URL}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
@@ -52,16 +52,18 @@ export async function loginAction(formData: FormData) {
       }
 
       isSuccess = true;
+    } else {
+      const errorData = await response.json()
+      return { error: errorData.message || "Invalid credentials." }
     }
   } catch (error) {
     console.error('Login request failed:', error)
+    return { error: "Network error occurred." }
   }
 
   // Execute the redirect outside the try/catch block
   if (isSuccess) {
     redirect(redirectPath)
-  } else {
-    redirect('/') // Back to login on failure
   }
 }
 
@@ -81,7 +83,7 @@ export async function signupAction(prevState: any, formData: FormData) {
 
   // Determine endpoint and payload based on selected role
   if (role === 'WORKER') {
-    endpoint = 'http://localhost:5000/api/auth/register/worker';
+    endpoint = `${process.env.AUTH_SERVICE_URL}/register/worker`;
     payload = {
       ...payload,
       category: formData.get('category'),
@@ -92,7 +94,7 @@ export async function signupAction(prevState: any, formData: FormData) {
       last_name: formData.get('last_name')
     };
   } else if (role === 'VERIFIER') {
-    endpoint = 'http://localhost:5000/api/auth/register/verifier';
+    endpoint = `${process.env.AUTH_SERVICE_URL}/register/verifier`;
     // Verifier endpoint only takes email and password according to Swagger
   } else {
     return { error: "Invalid role selected." }
@@ -132,7 +134,7 @@ export async function logoutAction() {
     // 1. Forward the cookies to your backend so it can clear the refresh token
     const cookieHeader = cookieStore.getAll().map(c => `${c.name}=${c.value}`).join('; ');
     
-    await fetch('http://localhost:5000/api/auth/logout', {
+    await fetch(`${process.env.AUTH_SERVICE_URL}/logout`, {
       method: 'POST',
       headers: {
         'Cookie': cookieHeader

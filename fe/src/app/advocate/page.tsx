@@ -1,5 +1,5 @@
-export default function page(){
-    return( 
-        <div>Advocate page</div>
-    )
+import { redirect } from "next/navigation";
+
+export default function AdvocateRedirect() {
+  redirect("/advocate/analytics");
 }

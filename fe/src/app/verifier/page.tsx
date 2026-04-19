@@ -1,5 +1,11 @@
 // app/verifier/page.tsx
+import type { Metadata } from "next";
 import { cookies } from 'next/headers'
+
+export const metadata: Metadata = {
+  title: "Verifier Desk | FairGig",
+  description: "Review and verify gig worker earnings submissions. Approve, flag discrepancies, or mark logs as unverifiable.",
+};
 import { redirect } from 'next/navigation'
 import VerifierClient from './verifier-client'
 import { logoutAction } from '@/app/actions/auth'

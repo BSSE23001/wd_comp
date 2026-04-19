@@ -6,11 +6,13 @@ class AnalyzeRequest(BaseModel):
     workerId: str = Field(..., description="The UUID of the worker to analyze.")
 
 class ShiftLog(BaseModel):
+    model_config = {"extra": "ignore"}
+    
     id: Optional[str] = None
     date: datetime
-    grossEarned: float
-    platformDeductions: float
-    netReceived: float
+    grossEarned: float = 0
+    platformDeductions: float = 0
+    netReceived: float = 0
 
 class AnomalyResult(BaseModel):
     hasAnomaly: bool

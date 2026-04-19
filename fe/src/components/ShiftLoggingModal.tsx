@@ -1,8 +1,9 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { X, Loader2, Camera } from "lucide-react";
+import { X, Loader2, Camera, CheckCircle2 } from "lucide-react";
 import { logShiftAction, getPlatformsAction } from "@/app/actions/earnings";
+import { toast } from "sonner";
 
 type Platform = {
   id: string;
@@ -17,6 +18,15 @@ const [state, formAction, isPending] = useActionState(logShiftAction, {
 });  
   const [platforms, setPlatforms] = useState<Platform[]>([]);
   const [isLoadingPlatforms, setIsLoadingPlatforms] = useState(false);
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setSelectedFileName(e.target.files[0].name);
+    } else {
+      setSelectedFileName(null);
+    }
+  };
 
   // Fetch platforms only when the modal opens
   useEffect(() => {
@@ -47,9 +57,13 @@ const [state, formAction, isPending] = useActionState(logShiftAction, {
 
   useEffect(() => {
     if (state?.success) {
+      toast.success("Shift logged successfully!");
+      setSelectedFileName(null);
       onClose();
+    } else if (state?.error) {
+      toast.error(state.error);
     }
-  }, [state?.success, onClose]);
+  }, [state?.success, state?.error, onClose]);
 
   if (!isOpen) return null;
 
@@ -155,20 +169,21 @@ const [state, formAction, isPending] = useActionState(logShiftAction, {
           {/* File Upload Section */}
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-slate-700">Earnings Screenshot</label>
-            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 py-4 text-slate-500 transition hover:bg-slate-50 hover:border-slate-300">
-              <Camera className="h-5 w-5" />
-              <span className="text-xs font-medium">Upload PNG or JPG</span>
+            <label className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed py-6 transition ${selectedFileName ? 'border-emerald-300 bg-emerald-50 text-emerald-600' : 'border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300'}`}>
+              {selectedFileName ? <CheckCircle2 className="h-6 w-6 text-emerald-500" /> : <Camera className="h-6 w-6" />}
+              <span className="text-xs font-medium">{selectedFileName || "Click to upload PNG or JPG"}</span>
               <input 
                 id="screenshot" 
                 name="screenshot" 
                 type="file" 
                 accept="image/*" 
+                onChange={handleFileChange}
                 className="hidden" 
               />
             </label>
           </div>
 
-          {/* Error Message */}
+          {/* Error Message is handled by toast now, but kept as fallback if desired */}
           {state?.error && (
             <div className="rounded-xl bg-red-50 p-3 text-xs font-medium text-red-600 border border-red-100">
               {state.error}

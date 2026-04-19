@@ -3,13 +3,14 @@
 import { useMemo, useState } from "react";
 import {
   ArrowUpRight,
-  Camera,
   CheckCircle2,
   ChevronUp,
   CircleDollarSign,
   FileText,
   Plus,
   ShieldCheck,
+  Loader2,
+  Activity,
 } from "lucide-react";
 import {
   Bar,
@@ -20,7 +21,11 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+
 import ShiftLoggingModal from "@/components/ShiftLoggingModal";
+import { toast } from "sonner";
+import { generateCertificateAction } from "@/app/actions/certificate";
+import { checkAnomaliesAction } from "@/app/actions/anomaly";
 
 // --- Types ---
 
@@ -72,41 +77,110 @@ const statusStyles: Record<string, string> = {
 };
 
 export default function DashboardClient({ user, initialLogs }: DashboardClientProps) {
+  // Safety: guarantee we work with an array
+  const safeLogs = Array.isArray(initialLogs) ? initialLogs : [];
+
   const [platformFilter, setPlatformFilter] = useState("All Platforms");
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
+  const [isGeneratingCert, setIsGeneratingCert] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // --- Certificate: fetch PDF as base64 from server, decode on client, trigger download ---
+  const handleGenerateCertificate = async () => {
+    setIsGeneratingCert(true);
+    toast.loading("Generating your income certificate...", { id: "cert" });
+
+    try {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(end.getDate() - 30);
+      const startDate = start.toISOString().split("T")[0];
+      const endDate = end.toISOString().split("T")[0];
+
+      const result = await generateCertificateAction(user.id, startDate, endDate);
+
+      if (result.success && result.data) {
+        // Decode base64 → binary → Blob → download
+        const byteCharacters = atob(result.data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: "application/pdf" });
+
+        const link = document.createElement("a");
+        link.href = window.URL.createObjectURL(blob);
+        link.download = `FairGig_Certificate_${startDate}_to_${endDate}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(link.href);
+
+        toast.success("Certificate downloaded!", { id: "cert" });
+      } else {
+        toast.error(result.error || "Failed to generate certificate.", { id: "cert" });
+      }
+    } catch (error) {
+      console.error("Certificate handler error:", error);
+      toast.error("An unexpected error occurred.", { id: "cert" });
+    } finally {
+      setIsGeneratingCert(false);
+    }
+  };
+
+  // --- Anomaly Detection ---
+  const handleCheckAnomalies = async () => {
+    setIsAnalyzing(true);
+    toast.loading("Analyzing your earnings data...", { id: "anomaly" });
+
+    try {
+      const result = await checkAnomaliesAction(user.id);
+
+      if (result.success) {
+        if (result.data?.hasAnomaly) {
+          toast.warning(`Anomaly Detected: ${result.data.explanation}`, { id: "anomaly", duration: 8000 });
+        } else {
+          toast.success(result.data?.explanation || "Your earnings look consistent. No anomalies found.", { id: "anomaly" });
+        }
+      } else {
+        toast.error(result.error || "Failed to analyze data.", { id: "anomaly" });
+      }
+    } catch (error) {
+      console.error("Anomaly handler error:", error);
+      toast.error("An unexpected error occurred.", { id: "anomaly" });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   // --- Dynamic Calculations ---
 
-  // 1. Total Net Revenue (All logs regardless of status)
   const totalNetRevenue = useMemo(() => {
-    return initialLogs.reduce((sum, log) => sum + Number(log.netReceived), 0);
-  }, [initialLogs]);
+    return safeLogs.reduce((sum, log) => sum + Number(log.netReceived), 0);
+  }, [safeLogs]);
 
-  // 2. Verified Earnings (Current logs with VERIFIED status)
   const verifiedEarnings = useMemo(() => {
-    return initialLogs
+    return safeLogs
       .filter((log) => log.status === "VERIFIED")
       .reduce((sum, log) => sum + Number(log.netReceived), 0);
-  }, [initialLogs]);
+  }, [safeLogs]);
 
-  // 3. Pending Review (Current logs with PENDING status)
   const pendingReview = useMemo(() => {
-    return initialLogs
+    return safeLogs
       .filter((log) => log.status === "PENDING")
       .reduce((sum, log) => sum + Number(log.netReceived), 0);
-  }, [initialLogs]);
+  }, [safeLogs]);
 
-  // 4. Effective Hourly Rate (Total Net / Total Hours)
   const hourlyRate = useMemo(() => {
-    const totalHours = initialLogs.reduce((sum, log) => sum + (Number(log.hoursWorked) || 0), 0);
-    const totalNet = initialLogs.reduce((sum, log) => sum + Number(log.netReceived), 0);
+    const totalHours = safeLogs.reduce((sum, log) => sum + (Number(log.hoursWorked) || 0), 0);
+    const totalNet = safeLogs.reduce((sum, log) => sum + Number(log.netReceived), 0);
     return totalHours > 0 ? totalNet / totalHours : 0;
-  }, [initialLogs]);
+  }, [safeLogs]);
 
-  // 4. Chart Data (Group last 7 logs by weekday)
   const chartData = useMemo(() => {
     const dailyMap: Record<string, number> = {};
-    const last7Logs = initialLogs.slice(0, 10); // Take a sample to build the 7-day view
+    const last7Logs = safeLogs.slice(0, 10);
 
     last7Logs.forEach((log) => {
       const day = new Date(log.date).toLocaleDateString("en-US", { weekday: "short" });
@@ -116,13 +190,12 @@ export default function DashboardClient({ user, initialLogs }: DashboardClientPr
     });
 
     return Object.entries(dailyMap).map(([day, value]) => ({ day, value }));
-  }, [initialLogs, platformFilter]);
+  }, [safeLogs, platformFilter]);
 
-  // 5. Extract unique platform names for the filter dropdown
   const platformOptions = useMemo(() => {
-    const names = Array.from(new Set(initialLogs.map((log) => log.platform.name)));
+    const names = Array.from(new Set(safeLogs.map((log) => log.platform.name)));
     return ["All Platforms", ...names];
-  }, [initialLogs]);
+  }, [safeLogs]);
 
   const rawName = user.first_name || user.email.split("@")[0];
   const displayName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
@@ -131,6 +204,8 @@ export default function DashboardClient({ user, initialLogs }: DashboardClientPr
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8">
+
+        {/* Header */}
         <header
           className="flex items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white px-4 py-4 shadow-sm sm:px-6"
           aria-label="User overview"
@@ -163,6 +238,7 @@ export default function DashboardClient({ user, initialLogs }: DashboardClientPr
           </div>
         </header>
 
+        {/* Hero Metrics */}
         <section aria-label="Hero metrics">
           <div className="grid grid-flow-col auto-cols-[minmax(16rem,1fr)] gap-4 overflow-x-auto pb-1 sm:auto-cols-auto sm:grid-cols-4 sm:overflow-visible">
             <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -218,6 +294,7 @@ export default function DashboardClient({ user, initialLogs }: DashboardClientPr
           </div>
         </section>
 
+        {/* Quick Actions */}
         <section aria-label="Quick actions" className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -238,22 +315,35 @@ export default function DashboardClient({ user, initialLogs }: DashboardClientPr
 
             <button
               type="button"
-              className="inline-flex min-h-14 items-center justify-center gap-3 rounded-2xl border border-slate-300 bg-white px-4 py-4 text-base font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50"
+              onClick={handleCheckAnomalies}
+              disabled={isAnalyzing}
+              className="inline-flex min-h-14 items-center justify-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-base font-semibold text-amber-900 shadow-sm transition hover:bg-amber-100 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Camera className="h-5 w-5" aria-hidden="true" />
-              Upload Proof
+              {isAnalyzing ? (
+                <Loader2 className="h-5 w-5 animate-spin text-amber-700" aria-hidden="true" />
+              ) : (
+                <Activity className="h-5 w-5 text-amber-700" aria-hidden="true" />
+              )}
+              {isAnalyzing ? "Analyzing..." : "Check Anomalies"}
             </button>
 
             <button
               type="button"
-              className="inline-flex min-h-14 items-center justify-center gap-3 rounded-2xl border border-slate-300 bg-white px-4 py-4 text-base font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50"
+              onClick={handleGenerateCertificate}
+              disabled={isGeneratingCert}
+              className="inline-flex min-h-14 items-center justify-center gap-3 rounded-2xl border border-slate-300 bg-white px-4 py-4 text-base font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <FileText className="h-5 w-5" aria-hidden="true" />
-              Get Certificate
+              {isGeneratingCert ? (
+                <Loader2 className="h-5 w-5 animate-spin text-slate-500" aria-hidden="true" />
+              ) : (
+                <FileText className="h-5 w-5" aria-hidden="true" />
+              )}
+              {isGeneratingCert ? "Generating..." : "Get Certificate"}
             </button>
           </div>
         </section>
 
+        {/* Income Analytics */}
         <section aria-label="Income analytics" className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -306,6 +396,7 @@ export default function DashboardClient({ user, initialLogs }: DashboardClientPr
           </div>
         </section>
 
+        {/* Recent Activity */}
         <section aria-label="Recent activity" className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -315,12 +406,12 @@ export default function DashboardClient({ user, initialLogs }: DashboardClientPr
           </div>
 
           <div className="mt-5 space-y-3">
-            {initialLogs.length === 0 ? (
+            {safeLogs.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 text-center">
                 <p className="text-sm font-medium text-slate-400">No shifts logged yet.</p>
               </div>
             ) : (
-              initialLogs.map((log) => (
+              safeLogs.map((log) => (
                 <article
                   key={log.id}
                   className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"

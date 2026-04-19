@@ -17,6 +17,8 @@ import {
   getVerifiedLogs,
   createFlag,
 } from "./controllers/internalController";
+import { validate } from "./middlewares/validate.middleware";
+import { logEarningsSchema, updateVerificationSchema, createPlatformSchema } from "./schemas/earnings.schema";
 
 const router = Router();
 
@@ -104,6 +106,7 @@ router.post(
   "/logs",
   requireAuth(["WORKER"]),
   upload.single("screenshot"),
+  validate(logEarningsSchema),
   logEarnings,
 );
 
@@ -255,7 +258,7 @@ router.get("/logs", requireAuth(["WORKER"]), getWorkerLogs);
  *       401:
  *         description: Unauthorized - Token is missing or invalid.
  */
-router.get("/platforms", requireAuth(["WORKER"]), getActivePlatforms);
+router.get("/platforms", requireAuth(["WORKER", "ADVOCATE"]), getActivePlatforms);
 
 // ==========================================
 // VERIFIER ROUTES
@@ -364,6 +367,7 @@ router.get("/verifier/queue", requireAuth(["VERIFIER"]), getQueue);
 router.patch(
   "/verifier/logs/:id",
   requireAuth(["VERIFIER"]),
+  validate(updateVerificationSchema),
   updateVerification,
 );
 
@@ -417,7 +421,7 @@ router.patch(
  *         description: Forbidden - Only Advocate Admins can add platforms.
  */
 
-router.post("/platforms", requireAuth(["ADVOCATE"]), createPlatform);
+router.post("/platforms", requireAuth(["ADVOCATE"]), validate(createPlatformSchema), createPlatform);
 
 /**
  * @swagger

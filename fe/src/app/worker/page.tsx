@@ -1,9 +1,13 @@
 // app/worker/page.tsx
+import type { Metadata } from "next";
 import { cookies } from 'next/headers'
+
+export const metadata: Metadata = {
+  title: "Worker Dashboard | FairGig",
+  description: "View your shift logs, check for earning anomalies, and generate verifiable income certificates.",
+};
 import { redirect } from 'next/navigation'
 import DashboardClient from './dashboard-client'
-import { logoutAction } from '@/app/actions/auth' // Import the action
-import { LogOut } from 'lucide-react' // Optional: icon for the button
 import { getEarningsLogsAction } from '@/app/actions/earnings';
 
 export default async function WorkerPage() {
@@ -26,22 +30,7 @@ export default async function WorkerPage() {
 
   return (
     <div className="relative">
-      {/* Sign Out Button Container */}
-      <div className="absolute right-4 top-4 z-50 sm:right-8 sm:top-6">
-        <form action={logoutAction}>
-          <button 
-            type="submit" 
-            className="flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-800"
-          >
-            <LogOut className="h-4 w-4" />
-            Sign Out
-          </button>
-        </form>
-      </div>
-
-      {/* Main Dashboard */}
-      <DashboardClient user={user} 
-      initialLogs={logsData || []} />
+      <DashboardClient user={user} initialLogs={logsData || []} />
     </div>
   )
 }

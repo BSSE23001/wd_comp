@@ -54,8 +54,12 @@ async def analyze_worker_data(payload: AnalyzeRequest):
     if not raw_logs:
         return AnomalyResult(hasAnomaly=False, explanation="No logs found for worker.")
 
+    # Convert raw JSON dicts to ShiftLog Pydantic objects
+    from schemas import ShiftLog
+    parsed_logs = [ShiftLog(**log) for log in raw_logs]
+
     # Process Data
-    analysis_result = detect_anomalies(raw_logs)
+    analysis_result = detect_anomalies(parsed_logs)
 
     # Inter-Service Hop 2: Save Flag if anomaly detected
     if analysis_result.hasAnomaly:

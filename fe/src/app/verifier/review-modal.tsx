@@ -50,7 +50,7 @@ export default function ReviewModal({ record, isOpen, onClose, onSave }: ReviewM
   const formattedDate = new Date(record.date).toLocaleDateString('en-GB');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Review shift log">
       <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl md:flex-row">
         
         {/* Left Side: Screenshot Viewer */}
@@ -71,8 +71,8 @@ export default function ReviewModal({ record, isOpen, onClose, onSave }: ReviewM
         <div className="flex w-full flex-col border-l border-slate-100 p-8 md:w-[420px]">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-2xl font-bold text-slate-900">Review Shift</h2>
-            <button onClick={onClose} className="rounded-full p-2 text-slate-400 hover:bg-slate-100">
-              <X className="h-6 w-6" />
+            <button onClick={onClose} className="rounded-full p-2 text-slate-400 hover:bg-slate-100" aria-label="Close review modal">
+              <X className="h-6 w-6" aria-hidden="true" />
             </button>
           </div>
 
@@ -97,8 +97,9 @@ export default function ReviewModal({ record, isOpen, onClose, onSave }: ReviewM
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700">Review Notes</label>
+              <label htmlFor="review-notes" className="text-sm font-semibold text-slate-700">Review Notes</label>
               <textarea
+                id="review-notes"
                 rows={4}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -118,8 +119,9 @@ export default function ReviewModal({ record, isOpen, onClose, onSave }: ReviewM
           <div className="mt-8 flex flex-col gap-3">
             <button
               onClick={() => handleAction("VERIFIED")}
-              disabled={!!isSubmitting}
-              className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-4 font-bold text-white transition-all hover:bg-emerald-700 disabled:opacity-50"
+              disabled={!!isSubmitting || record.status === "UNVERIFIABLE" || record.status === "DISCREPANCY"}
+              className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-4 font-bold text-white transition-all hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              title={record.status === "UNVERIFIABLE" || record.status === "DISCREPANCY" ? "Cannot approve flagged/disputed logs" : ""}
             >
               {isSubmitting === "VERIFIED" ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle className="h-5 w-5" />}
               Approve & Verify

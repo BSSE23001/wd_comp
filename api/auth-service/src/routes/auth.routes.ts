@@ -7,6 +7,8 @@ import {
   registerVerifier,
   registerWorker,
 } from "../controllers/auth.controller";
+import { validate } from "../middlewares/validate.middleware";
+import { loginSchema, registerVerifierSchema, registerWorkerSchema } from "../schemas/auth.schema";
 
 const router = Router();
 
@@ -175,7 +177,7 @@ router.post("/signup", signUp);
  *       500:
  *         description: Internal server error
  */
-router.post("/login", login);
+router.post("/login", validate(loginSchema), login);
 
 /**
  * @openapi
@@ -283,7 +285,7 @@ router.post("/logout", logout);
  *       201:
  *         description: Worker registered successfully
  */
-router.post("/register/worker", registerWorker);
+router.post("/register/worker", validate(registerWorkerSchema), registerWorker);
 
 /**
  * @openapi
@@ -313,6 +315,6 @@ router.post("/register/worker", registerWorker);
  *       201:
  *         description: Verifier registered and pending approval
  */
-router.post("/register/verifier", registerVerifier);
+router.post("/register/verifier", validate(registerVerifierSchema), registerVerifier);
 
 export default router;
