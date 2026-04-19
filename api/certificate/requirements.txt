@@ -2,5 +2,9 @@ fastapi==0.110.0
 uvicorn==0.27.1
 httpx==0.27.0
 jinja2==3.1.3
-weasyprint==61.0
+# Using a slightly more flexible version of weasyprint 
+# to allow for pre-compiled binary matching
+weasyprint>=61.0
 python-dotenv==1.0.1
+# Required helper for weasyprint on some linux envs
+cffi>=1.16.0
